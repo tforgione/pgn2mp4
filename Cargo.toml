@@ -1,5 +1,8 @@
 [package]
 name = "pgn2mp4"
+description = "Easily convert chess games into videos"
+authors = ["Thomas Forgione <thomas@forgione.fr>"]
+license = ["GPL-3.0-only"]
 version = "0.0.1"
 edition = "2024"
 
