@@ -2,6 +2,8 @@
 
 *Easily convert chess games into videos.*
 
+https://github.com/user-attachments/assets/59129378-c0b3-4284-92ae-30bffa887322
+
 ### Installation
 
 First install [Rust](https://www.rust-lang.org/tools/install) and `ffmpeg`.
