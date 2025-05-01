@@ -9,7 +9,7 @@ First install [Rust](https://www.rust-lang.org/tools/install) and `ffmpeg`.
 Then, you can install `pgn2mp4` by running
 
 ```sh
-cargo install --git https://github.com/tforgione/pgn2mp4
+cargo install pgn2mp4
 ```
 
 ### Usage
