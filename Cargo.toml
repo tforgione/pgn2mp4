@@ -1,0 +1,9 @@
+[package]
+name = "pgn2mp4"
+version = "0.0.1"
+edition = "2024"
+
+[dependencies]
+image = { version = "0.25.6", features = ["jpeg"] }
+pgn-reader = "0.26.0"
+shakmaty = "0.27.3"
