@@ -12,21 +12,21 @@ use shakmaty::{Board, Chess, Color, Piece, Position, Role, Square};
 
 use pgn_reader::{BufferedReader, SanPlus, Visitor};
 
-fn draw_image(output: &mut RgbaImage, source: &RgbaImage, x: u32, y: u32) {
+fn draw_image(output: &mut RgbaImage, source: &RgbaImage, x: u32, y: u32, alpha: f32) {
     for i in 0..source.width() {
         for j in 0..source.height() {
             let new_pixel = source.get_pixel(i, j);
             if new_pixel[3] > 0 {
                 let orig_pixel = output.get_pixel(x + i, y + j);
 
-                let a = new_pixel[3] as f64 / 255.0;
+                let a = alpha * new_pixel[3] as f32 / 255.0;
 
-                let r1 = orig_pixel[0] as f64 / 255.0;
-                let r2 = new_pixel[0] as f64 / 255.0;
-                let g1 = orig_pixel[1] as f64 / 255.0;
-                let g2 = new_pixel[1] as f64 / 255.0;
-                let b1 = orig_pixel[2] as f64 / 255.0;
-                let b2 = new_pixel[2] as f64 / 255.0;
+                let r1 = orig_pixel[0] as f32 / 255.0;
+                let r2 = new_pixel[0] as f32 / 255.0;
+                let g1 = orig_pixel[1] as f32 / 255.0;
+                let g2 = new_pixel[1] as f32 / 255.0;
+                let b1 = orig_pixel[2] as f32 / 255.0;
+                let b2 = new_pixel[2] as f32 / 255.0;
 
                 let rf = (255.0 * (r1 * (1.0 - a) + a * r2)) as u8;
                 let gf = (255.0 * (g1 * (1.0 - a) + a * g2)) as u8;
@@ -195,6 +195,7 @@ impl FrameGenerator {
                         &piece_image,
                         (line as u32) * width / 8,
                         (rank as u32) * height / 8,
+                        1.0,
                     );
                 }
             }
@@ -255,6 +256,12 @@ impl Visitor for FrameGenerator {
         let mut clone = self.board.board().clone();
         clone.remove_piece_at(next_move.from().unwrap()).unwrap();
 
+        // Remove captured piece
+        let capture = self.board.board().piece_at(next_move.to());
+        if capture.is_some() {
+            clone.remove_piece_at(next_move.to()).unwrap();
+        }
+
         let base_image = self.to_image(&clone);
         let width = base_image.width() as f32;
         let height = base_image.height() as f32;
@@ -276,7 +283,24 @@ impl Visitor for FrameGenerator {
                 &piece_image,
                 (x * width / 8.0) as u32,
                 ((7.0 - y) * height / 8.0) as u32,
+                1.0,
             );
+
+            if let Some(capture) = capture {
+                let piece_image = self
+                    .pieces
+                    .pieces
+                    .get(&(capture.role, capture.color))
+                    .unwrap();
+
+                draw_image(
+                    &mut current_image,
+                    &piece_image,
+                    ((to.0 as f32) * width / 8.0) as u32,
+                    ((7.0 - (to.1 as f32)) * height / 8.0) as u32,
+                    1.0 - i as f32 / self.transition as f32,
+                )
+            }
 
             self.save(&current_image, 1);
         }
