@@ -8,7 +8,7 @@ use std::process::{exit, Child, ChildStdin, Command, Stdio};
 use image::imageops::{resize, FilterType};
 use image::{Rgba, RgbaImage};
 
-use shakmaty::{Board, Chess, Color, Piece, Position, Role, Square};
+use shakmaty::{Board, Chess, Color, Move, Piece, Position, Role, Square};
 
 use pgn_reader::{BufferedReader, SanPlus, Visitor};
 
@@ -269,37 +269,114 @@ impl Visitor for FrameGenerator {
         for i in 0..self.transition {
             let mut current_image = base_image.clone();
             let lambda = i as f32 / self.transition as f32;
-            let x = (1.0 - lambda) * from.0 as f32 + lambda * to.0 as f32;
-            let y = (1.0 - lambda) * from.1 as f32 + lambda * to.1 as f32;
 
-            let piece_image = self
-                .pieces
-                .pieces
-                .get(&(next_move.role(), self.current_color))
-                .unwrap();
+            match next_move {
+                Move::Castle { king, rook } => {
+                    let (rook_from, rook_to, king_from, king_to) = match (king, rook) {
+                        // King side castle for white
+                        (Square::E1, Square::H1) => ((7, 0), (5, 0), (4, 0), (6, 0)),
 
-            draw_image(
-                &mut current_image,
-                &piece_image,
-                (x * width / 8.0) as u32,
-                ((7.0 - y) * height / 8.0) as u32,
-                1.0,
-            );
+                        // King side castle for black
+                        (Square::E8, Square::H8) => ((7, 7), (5, 7), (4, 7), (6, 7)),
 
-            if let Some(capture) = capture {
-                let piece_image = self
-                    .pieces
-                    .pieces
-                    .get(&(capture.role, capture.color))
-                    .unwrap();
+                        // Queen side castle for white
+                        (Square::E1, Square::A1) => ((0, 0), (3, 0), (4, 0), (2, 0)),
 
-                draw_image(
-                    &mut current_image,
-                    &piece_image,
-                    ((to.0 as f32) * width / 8.0) as u32,
-                    ((7.0 - (to.1 as f32)) * height / 8.0) as u32,
-                    1.0 - i as f32 / self.transition as f32,
-                )
+                        // Queen side castle for black
+                        (Square::E8, Square::A8) => ((0, 7), (3, 7), (4, 7), (2, 7)),
+
+                        _ => todo!("either invalid castle, or 960 chess"),
+                    };
+
+                    let rook_from = match self.side {
+                        Color::White => (rook_from.0 as u8, 7 - rook_from.1 as u8),
+                        Color::Black => (7 - rook_from.0 as u8, rook_from.1 as u8),
+                    };
+
+                    let rook_to = match self.side {
+                        Color::White => (rook_to.0 as u8, 7 - rook_to.1 as u8),
+                        Color::Black => (7 - rook_to.0 as u8, rook_to.1 as u8),
+                    };
+
+                    let rook_x = (1.0 - lambda) * rook_from.0 as f32 + lambda * rook_to.0 as f32;
+                    let rook_y = (1.0 - lambda) * rook_from.1 as f32 + lambda * rook_to.1 as f32;
+
+                    let piece_image = self
+                        .pieces
+                        .pieces
+                        .get(&(Role::Rook, self.current_color))
+                        .unwrap();
+
+                    draw_image(
+                        &mut current_image,
+                        &piece_image,
+                        (rook_x * width / 8.0) as u32,
+                        (rook_y * height / 8.0) as u32,
+                        1.0,
+                    );
+
+                    let king_from = match self.side {
+                        Color::White => (king_from.0 as u8, 7 - king_from.1 as u8),
+                        Color::Black => (7 - king_from.0 as u8, king_from.1 as u8),
+                    };
+
+                    let king_to = match self.side {
+                        Color::White => (king_to.0 as u8, 7 - king_to.1 as u8),
+                        Color::Black => (7 - king_to.0 as u8, king_to.1 as u8),
+                    };
+
+                    let king_x = (1.0 - lambda) * king_from.0 as f32 + lambda * king_to.0 as f32;
+                    let king_y = (1.0 - lambda) * king_from.1 as f32 + lambda * king_to.1 as f32;
+
+                    let piece_image = self
+                        .pieces
+                        .pieces
+                        .get(&(Role::King, self.current_color))
+                        .unwrap();
+
+                    draw_image(
+                        &mut current_image,
+                        &piece_image,
+                        (king_x * width / 8.0) as u32,
+                        (king_y * height / 8.0) as u32,
+                        1.0,
+                    );
+                }
+
+                _ => {
+                    let x = (1.0 - lambda) * from.0 as f32 + lambda * to.0 as f32;
+                    let y = (1.0 - lambda) * from.1 as f32 + lambda * to.1 as f32;
+
+                    let piece_image = self
+                        .pieces
+                        .pieces
+                        .get(&(next_move.role(), self.current_color))
+                        .unwrap();
+
+                    draw_image(
+                        &mut current_image,
+                        &piece_image,
+                        (x * width / 8.0) as u32,
+                        ((7.0 - y) * height / 8.0) as u32,
+                        1.0,
+                    );
+
+                    if let Some(capture) = capture {
+                        let piece_image = self
+                            .pieces
+                            .pieces
+                            .get(&(capture.role, capture.color))
+                            .unwrap();
+
+                        draw_image(
+                            &mut current_image,
+                            &piece_image,
+                            ((to.0 as f32) * width / 8.0) as u32,
+                            ((7.0 - (to.1 as f32)) * height / 8.0) as u32,
+                            1.0 - lambda,
+                        )
+                    }
+                }
             }
 
             self.save(&current_image, 1);
